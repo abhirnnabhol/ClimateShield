@@ -1,0 +1,56 @@
+@import 'leaflet/dist/leaflet.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply text-slate-800 antialiased font-sans selection:bg-[#092c24] selection:text-[#a7f3d0];
+    min-height: 100vh;
+    background-color: #e8f5f0;
+    background-image: 
+      radial-gradient(at 100% 0%, rgba(167, 243, 208, 0.5) 0px, transparent 55%),
+      radial-gradient(at 0% 100%, rgba(110, 231, 183, 0.4) 0px, transparent 55%),
+      radial-gradient(at 50% 30%, rgba(209, 250, 229, 0.6) 0px, transparent 100%);
+    background-attachment: fixed;
+  }
+
+  /* Custom scrollbar in forest & mint palette */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #e1f2ec;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #479b89;
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #092c24;
+  }
+}
+
+/* Forest Green Leaflet Cartography & Popup Styling */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  z-index: 10;
+  background-color: #d1fae5;
+}
+
+.leaflet-popup-content-wrapper {
+  background: #ffffff !important;
+  color: #092c24 !important;
+  border: 1px solid #c5e6db !important;
+  border-radius: 16px !important;
+  box-shadow: 0 10px 25px -5px rgba(9, 44, 36, 0.15) !important;
+}
+
+.leaflet-popup-tip {
+  background: #ffffff !important;
+  border: 1px solid #c5e6db !important;
+}
