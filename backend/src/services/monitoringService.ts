@@ -1,5 +1,6 @@
 import { db } from '../db/index.js';
 import { riskService } from './riskService.js';
+import { airQualityService } from './airQualityService.js';
 import { notificationService } from './notificationService.js';
 import { Alert } from '../types/shared.js';
 
@@ -124,6 +125,60 @@ export class MonitoringService {
               // Dispatch notification through user's active channels
               await notificationService.sendNotification(user, createdAlert, userSettings);
             }
+          }
+
+          // Evaluate air quality threshold for atmospheric pollution alerts
+          try {
+            const aq = await airQualityService.getAirQuality(loc.latitude, loc.longitude);
+            if (user && aq.current.usAqi && aq.current.usAqi >= 151) {
+              const existingAlerts = db.getUserAlerts(user.id);
+              const recentSameAqAlert = existingAlerts.find(
+                (a) =>
+                  a.locationId === loc.id &&
+                  a.type === 'air-quality' &&
+                  !a.isRead &&
+                  Date.now() - new Date(a.createdAt).getTime() < 12 * 3600000 // 12h cooldown
+              );
+
+              if (!recentSameAqAlert) {
+                const userSettings = db.getNotificationSettings(user.id);
+                const aqSeverity =
+                  aq.assessment.usCategory.code === 'HAZARDOUS' || aq.assessment.usCategory.code === 'VERY_UNHEALTHY'
+                    ? 'EXTREME'
+                    : 'HIGH';
+
+                const newAqAlertData: Omit<Alert, 'id' | 'createdAt' | 'updatedAt'> = {
+                  userId: user.id,
+                  locationId: loc.id,
+                  locationName: loc.name,
+                  type: 'air-quality',
+                  severity: aqSeverity,
+                  title: `${aqSeverity}: ${aq.assessment.usCategory.label} Air Quality Alert`,
+                  message: `Atmospheric models project ${aq.assessment.usCategory.label} conditions (US AQI: ${aq.current.usAqi}) at ${loc.name}, driven primarily by ${aq.assessment.dominantPollutant.name}.`,
+                  expectedTime: 'Current through next 24 to 48 hours',
+                  factors: [
+                    `US AQI: ${aq.current.usAqi} (${aq.assessment.usCategory.label})`,
+                    `European AQI: ${aq.current.europeanAqi} (${aq.assessment.europeanCategory.label})`,
+                    `Leading Concern: ${aq.assessment.dominantPollutant.name} (${aq.assessment.dominantPollutant.value} ${aq.assessment.dominantPollutant.unit})`,
+                    `PM2.5: ${aq.current.pm2_5 ?? 'N/A'} μg/m³`,
+                    `PM10: ${aq.current.pm10 ?? 'N/A'} μg/m³`
+                  ],
+                  recommendations: [
+                    aq.assessment.healthGuidance.general,
+                    aq.assessment.healthGuidance.sensitive,
+                    aq.assessment.dominantPollutant.precautions
+                  ],
+                  isRead: false
+                };
+
+                const createdAqAlert = db.createAlert(newAqAlertData);
+                report.alertsCreated++;
+                alertCreated = true;
+                await notificationService.sendNotification(user, createdAqAlert, userSettings);
+              }
+            }
+          } catch (aqErr) {
+            console.warn(`[MonitoringService] Air quality check failed for ${loc.name}:`, (aqErr as Error).message);
           }
 
           report.details.push({

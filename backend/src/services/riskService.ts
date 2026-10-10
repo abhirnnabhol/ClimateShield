@@ -129,14 +129,14 @@ export class RiskService {
       {
         name: 'Land Surface Temp (Satellite)',
         value: `${satellite.landSurfaceTemperature}°C`,
-        status: satellite.landSurfaceTemperature >= 42 ? 'HIGH' : 'MODERATE',
+        status: satellite.landSurfaceTemperature >= 44 ? 'EXTREME' : satellite.landSurfaceTemperature >= 38 ? 'HIGH' : satellite.landSurfaceTemperature >= 32 ? 'MODERATE' : 'LOW',
         weight: 20,
         description: 'Thermal infrared radiometric surface emission'
       },
       {
         name: 'Solar Radiation & UV',
         value: `UV ${weather.uvIndex}`,
-        status: weather.uvIndex >= 8 ? 'HIGH' : 'MODERATE',
+        status: weather.uvIndex >= 10 ? 'EXTREME' : weather.uvIndex >= 7 ? 'HIGH' : weather.uvIndex >= 3 ? 'MODERATE' : 'LOW',
         weight: 15,
         description: 'Daytime incoming solar irradiance and UV stress'
       }
@@ -144,10 +144,14 @@ export class RiskService {
 
     // 2. Drought Risk Calculation (0 - 100)
     let rawDrought = 0;
-    // Rainfall deficit (max 35 pts)
-    if (rainfall.condition === 'Extreme Deficit') rawDrought += 35;
-    else if (rainfall.condition === 'Moderate Deficit') rawDrought += 25;
-    else if (rainfall.condition === 'Normal') rawDrought += 10;
+    // Rainfall deficit (max 35 pts) - buffered if soil retains healthy moisture
+    if (rainfall.condition === 'Extreme Deficit') {
+      rawDrought += (soil.surfaceMoisturePercent > 45 ? 12 : 35);
+    } else if (rainfall.condition === 'Moderate Deficit') {
+      rawDrought += (soil.surfaceMoisturePercent > 45 ? 6 : 20);
+    } else if (rainfall.condition === 'Normal') {
+      rawDrought += (soil.surfaceMoisturePercent > 45 ? 2 : 8);
+    }
 
     // Soil moisture depletion (max 30 pts)
     if (soil.surfaceMoisturePercent <= 15) rawDrought += 30;
@@ -169,8 +173,15 @@ export class RiskService {
     const droughtFactors: RiskFactor[] = [
       {
         name: 'Precipitation Deficit',
-        value: `${rainfall.historicalAnomalyPercent}%`,
-        status: rainfall.historicalAnomalyPercent <= -40 ? 'EXTREME' : rainfall.historicalAnomalyPercent <= -20 ? 'HIGH' : 'LOW',
+        value: `${rainfall.historicalAnomalyPercent}% (${rainfall.rainfall7d}mm/7d)`,
+        status:
+          rainfall.consecutiveDryDays >= 20 && rainfall.historicalAnomalyPercent <= -50
+            ? 'EXTREME'
+            : rainfall.consecutiveDryDays >= 12 && rainfall.historicalAnomalyPercent <= -30
+              ? 'HIGH'
+              : rainfall.consecutiveDryDays >= 8 && rainfall.historicalAnomalyPercent <= -20
+                ? 'MODERATE'
+                : 'LOW',
         weight: 35,
         description: '7-day precipitation anomaly vs climatological baseline'
       },
@@ -191,7 +202,7 @@ export class RiskService {
       {
         name: 'Consecutive Dry Days',
         value: `${rainfall.consecutiveDryDays} days`,
-        status: rainfall.consecutiveDryDays > 10 ? 'HIGH' : rainfall.consecutiveDryDays > 5 ? 'MODERATE' : 'LOW',
+        status: rainfall.consecutiveDryDays >= 25 ? 'EXTREME' : rainfall.consecutiveDryDays >= 14 ? 'HIGH' : rainfall.consecutiveDryDays >= 8 ? 'MODERATE' : 'LOW',
         weight: 10,
         description: 'Uninterrupted period without measurable precipitation'
       }

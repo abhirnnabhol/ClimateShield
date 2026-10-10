@@ -7,6 +7,7 @@ export interface WeatherCurrent {
   humidity: number;
   windSpeed: number;
   uvIndex: number;
+  uvIndexMax?: number;
   solarRadiation: number;
   isDemo: boolean;
   dataSource: string;
@@ -40,7 +41,7 @@ export class WeatherService {
     if (cached) return cached;
 
     try {
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m,uv_index&timezone=auto`;
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m,uv_index&daily=uv_index_max&timezone=auto`;
       const response = await fetch(url, { headers: { 'User-Agent': 'ClimateShield/1.0' }, signal: AbortSignal.timeout(5000) });
       
       if (!response.ok) {
@@ -49,13 +50,21 @@ export class WeatherService {
 
       const data = (await response.json()) as any;
       const current = data.current;
+      const daily = data.daily;
+      const peakUv = Math.round((daily?.uv_index_max?.[0] ?? 7.2) * 10) / 10;
+      const currentUv = Math.round((current.uv_index ?? 0) * 10) / 10;
+
+      // For climate heatwave hazard assessment, nocturnal UV (0) obscures daytime solar stress.
+      // If current reading is <= 0.5 (nighttime / dawn), use daytime peak UV index.
+      const effectiveUv = currentUv > 0.5 ? currentUv : peakUv;
 
       const result: WeatherCurrent = {
         temperature: Math.round((current.temperature_2m ?? 32) * 10) / 10,
         apparentTemperature: Math.round((current.apparent_temperature ?? 34) * 10) / 10,
         humidity: Math.round(current.relative_humidity_2m ?? 45),
         windSpeed: Math.round((current.wind_speed_10m ?? 12) * 10) / 10,
-        uvIndex: Math.round((current.uv_index ?? 6) * 10) / 10,
+        uvIndex: effectiveUv,
+        uvIndexMax: peakUv,
         solarRadiation: Math.round(750 + Math.sin(latitude) * 200),
         isDemo: false,
         dataSource: 'OPEN-METEO LIVE'

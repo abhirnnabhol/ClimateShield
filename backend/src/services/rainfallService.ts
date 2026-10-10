@@ -45,14 +45,26 @@ export class RainfallService {
         }
       }
 
-      const baselineNormal7d = 25.0; // typical temperate/tropical baseline in mm
-      const anomaly = Math.round(((total7d - baselineNormal7d) / baselineNormal7d) * 100);
+      // Month-aware climatological baseline (mm per 7 days)
+      const month = new Date().getMonth(); // 0-11
+      let baseline7d = 14.0;
+      if (month >= 5 && month <= 8) baseline7d = 35.0; // peak monsoon
+      else if (month >= 9 && month <= 10) baseline7d = 12.0; // post-monsoon
+      else if (month >= 11 || month <= 1) baseline7d = 6.0; // dry winter
+
+      let anomaly = Math.round(((total7d - baseline7d) / baseline7d) * 100);
+      // For short rainless intervals (< 8 dry days), cap the anomaly to a mild dry spell (-20% to -35%)
+      // rather than an alarming -100%
+      if (total7d === 0 && dryDays <= 7) {
+        anomaly = -Math.min(35, Math.max(15, dryDays * 5));
+      }
 
       let condition: RainfallData['condition'] = 'Normal';
-      if (total7d < 5 && dryDays >= 5) condition = 'Extreme Deficit';
-      else if (anomaly < -25) condition = 'Moderate Deficit';
-      else if (latest24h > 50 || total7d > 100) condition = 'Heavy Torrential';
+      if (latest24h > 50 || total7d > 100) condition = 'Heavy Torrential';
       else if (anomaly > 30) condition = 'Surplus';
+      else if (dryDays >= 14 && total7d < 2) condition = 'Extreme Deficit';
+      else if (dryDays >= 7 && (anomaly < -40 || total7d < 5)) condition = 'Moderate Deficit';
+      else condition = 'Normal';
 
       const result: RainfallData = {
         rainfall24h: Math.round(latest24h * 10) / 10,

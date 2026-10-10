@@ -9,6 +9,7 @@ import riskRoutes from './routes/riskRoutes.js';
 import alertRoutes from './routes/alertRoutes.js';
 import profileRoutes from './routes/profileRoutes.js';
 import monitorRoutes from './routes/monitorRoutes.js';
+import airQualityRoutes from './routes/airQualityRoutes.js';
 import { riskController } from './controllers/riskController.js';
 import { profileController } from './controllers/profileController.js';
 import { requireAuth } from './middleware/auth.js';
@@ -52,6 +53,7 @@ app.use('/api/risk', riskRoutes);
 app.use('/api/alerts', alertRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/monitor', monitorRoutes);
+app.use('/api/air-quality', airQualityRoutes);
 
 // Global Error Handler
 app.use(errorHandler);

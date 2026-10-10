@@ -136,7 +136,7 @@ export interface Alert {
   userId: string;
   locationId: string;
   locationName: string;
-  type: 'heat' | 'drought' | 'flood' | 'multi-hazard';
+  type: 'heat' | 'drought' | 'flood' | 'multi-hazard' | 'air-quality';
   severity: RiskLevel;
   title: string;
   message: string;
@@ -152,6 +152,7 @@ export interface NotificationSettings {
   heatAlerts: boolean;
   droughtAlerts: boolean;
   floodAlerts: boolean;
+  airQualityAlerts?: boolean;
   minimumSeverity: RiskLevel;
   channels: {
     inApp: boolean;
@@ -234,4 +235,113 @@ export interface RiskHistoryPoint {
 export interface AuthResponse {
   user: User;
   token: string;
+}
+
+export interface AirQualityCurrent {
+  time: string;
+  indiaAqi: number | null;
+  usAqi: number | null;
+  europeanAqi: number | null;
+  pm2_5: number | null;
+  pm10: number | null;
+  nitrogenDioxide: number | null;
+  sulphurDioxide: number | null;
+  ozone: number | null;
+  carbonMonoxide: number | null;
+  carbonDioxide: number | null;
+  nitrogenMonoxide: number | null;
+  dust: number | null;
+  uvIndex: number | null;
+}
+
+export interface AirQualityHourly {
+  time: string[];
+  indiaAqi: (number | null)[];
+  usAqi: (number | null)[];
+  europeanAqi: (number | null)[];
+  pm2_5: (number | null)[];
+  pm10: (number | null)[];
+  nitrogenDioxide: (number | null)[];
+  sulphurDioxide: (number | null)[];
+  ozone: (number | null)[];
+  carbonMonoxide: (number | null)[];
+  carbonDioxide: (number | null)[];
+  nitrogenMonoxide: (number | null)[];
+  dust: (number | null)[];
+  uvIndex: (number | null)[];
+}
+
+export interface AirQualityAssessment {
+  dominantPollutant: {
+    key: string;
+    name: string;
+    chemical: string;
+    value: number | null;
+    unit: string;
+    aqiContribution: string;
+    explanation: string;
+    trend: 'increasing' | 'stable' | 'decreasing';
+    precautions: string;
+  };
+  indiaCategory: {
+    code: string;
+    label: string;
+    color: string;
+    bg: string;
+    text: string;
+    border: string;
+    description: string;
+  };
+  usCategory: {
+    code: string;
+    label: string;
+    color: string;
+    bg: string;
+    text: string;
+    border: string;
+    description: string;
+  };
+  europeanCategory: {
+    code: string;
+    label: string;
+    color: string;
+    bg: string;
+    text: string;
+    border: string;
+    description: string;
+  };
+  healthGuidance: {
+    general: string;
+    sensitive: string;
+    childrenElderly: string;
+    outdoorWorkers: string;
+  };
+  peakForecast: {
+    time: string;
+    formattedTime: string;
+    usAqi: number | null;
+    indiaAqi?: number | null;
+    pollutant: string;
+  } | null;
+  improvingWindow: string | null;
+}
+
+export interface AirQualityData {
+  latitude: number;
+  longitude: number;
+  timezone: string;
+  elevation?: number;
+  current: AirQualityCurrent;
+  currentUnits: Record<string, string>;
+  hourly: AirQualityHourly;
+  assessment: AirQualityAssessment;
+  metadata: {
+    source: string;
+    modelResolution: string;
+    disclaimer: string;
+    timestamp: string;
+    isLive: boolean;
+    scaleRange: string;
+    cpcbStandard: string;
+  };
 }

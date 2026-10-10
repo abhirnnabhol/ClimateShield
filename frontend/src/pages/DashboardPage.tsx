@@ -8,10 +8,12 @@ import {
   Zap,
   Info,
   Clock,
-  ShieldAlert
+  ShieldAlert,
+  Wind,
+  ArrowRight
 } from 'lucide-react';
 import { api } from '../services/api';
-import { RiskAssessment } from '../types';
+import { RiskAssessment, AirQualityData } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { RiskScoreCard } from '../components/RiskScoreCard';
 import { HazardRiskCard } from '../components/HazardRiskCard';
@@ -28,14 +30,17 @@ import { ClimateCharacterScene } from '../components/ClimateCharacterScene';
 interface DashboardPageProps {
   onOpenLocationModal: () => void;
   onNavigateToAlerts?: () => void;
+  onNavigateToAirQuality?: () => void;
 }
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({
   onOpenLocationModal,
-  onNavigateToAlerts
+  onNavigateToAlerts,
+  onNavigateToAirQuality
 }) => {
   const { user, primaryLocation, isDemoMode } = useAuth();
   const [assessment, setAssessment] = useState<RiskAssessment | null>(null);
+  const [airQuality, setAirQuality] = useState<AirQualityData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,13 +57,26 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     setError(null);
     setRefreshing(true);
     try {
-      const res = await api.getDashboard();
-      if (res.needsLocationSetup) {
-        setNeedsSetup(true);
-        setAssessment(null);
-      } else if (res.assessment) {
-        setNeedsSetup(false);
-        setAssessment(res.assessment);
+      const [resResult, aqResult] = await Promise.allSettled([
+        api.getDashboard(),
+        api.getAirQuality(primaryLocation?.latitude, primaryLocation?.longitude)
+      ]);
+
+      if (resResult.status === 'fulfilled') {
+        const res = resResult.value;
+        if (res.needsLocationSetup) {
+          setNeedsSetup(true);
+          setAssessment(null);
+        } else if (res.assessment) {
+          setNeedsSetup(false);
+          setAssessment(res.assessment);
+        }
+      } else {
+        throw resResult.reason;
+      }
+
+      if (aqResult.status === 'fulfilled') {
+        setAirQuality(aqResult.value.airQuality);
       }
     } catch (err: any) {
       console.error('Fetch dashboard failed:', err);
@@ -292,6 +310,119 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           />
         </div>
       </div>
+
+      {/* Air Quality & Atmospheric Intelligence Overview Card */}
+      {airQuality && (
+        <div className="rounded-3xl bg-gradient-to-br from-white via-[#f7fcf9] to-[#eaf6f1] border border-[#c5e6db] p-6 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#e1f2ec]">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-[#092c24] text-[#a7f3d0] flex items-center justify-center shadow-xs">
+                <Wind className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base font-black text-[#092c24]">Air Quality & Pollution Intelligence</h3>
+                  <span className="text-[10px] font-bold uppercase tracking-wider bg-[#d7f1e6] text-[#092c24] border border-[#a8dec9] px-2 py-0.5 rounded-full">
+                    Atmospheric Monitor
+                  </span>
+                </div>
+                <p className="text-xs text-[#479b89]">CAMS Atmospheric Composition & Copernicus Model Assimilation</p>
+              </div>
+            </div>
+            {onNavigateToAirQuality && (
+              <button
+                onClick={onNavigateToAirQuality}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#092c24] hover:bg-[#156550] text-[#a7f3d0] hover:text-white text-xs font-bold transition-all shadow-xs w-fit"
+              >
+                <span>Open Air Quality Center</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5 mt-4">
+            {/* India National AQI (0-1000) */}
+            <div className="p-4 rounded-2xl bg-white border border-[#c5e6db]">
+              <div className="flex items-center justify-between">
+                <div className="text-[11px] font-bold text-[#479b89] uppercase flex items-center gap-1">
+                  <span>🇮🇳</span> India NAQI
+                </div>
+                <span className="text-[9px] font-mono font-bold text-slate-400">0–1000</span>
+              </div>
+              <div className="flex items-baseline gap-2 mt-1">
+                <span className="text-2xl font-black text-[#092c24] font-mono">
+                  {airQuality.current.indiaAqi !== null ? Math.round(airQuality.current.indiaAqi) : 'N/A'}
+                </span>
+                {airQuality.assessment.indiaCategory && (
+                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase border ${airQuality.assessment.indiaCategory.bg} ${airQuality.assessment.indiaCategory.text} ${airQuality.assessment.indiaCategory.border}`}>
+                    {airQuality.assessment.indiaCategory.label}
+                  </span>
+                )}
+              </div>
+              <div className="text-[11px] text-slate-500 mt-1 line-clamp-1">
+                {airQuality.assessment.indiaCategory?.description || 'CPCB Standard 7-tier scale'}
+              </div>
+            </div>
+
+            {/* US AQI */}
+            <div className="p-4 rounded-2xl bg-white border border-[#c5e6db]">
+              <div className="text-[11px] font-bold text-[#479b89] uppercase">US EPA AQI</div>
+              <div className="flex items-baseline gap-2 mt-1">
+                <span className="text-2xl font-black text-[#092c24] font-mono">
+                  {airQuality.current.usAqi !== null ? Math.round(airQuality.current.usAqi) : 'N/A'}
+                </span>
+                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase border ${airQuality.assessment.usCategory.bg} ${airQuality.assessment.usCategory.text} ${airQuality.assessment.usCategory.border}`}>
+                  {airQuality.assessment.usCategory.label}
+                </span>
+              </div>
+              <div className="text-[11px] text-slate-500 mt-1 line-clamp-1">{airQuality.assessment.usCategory.description}</div>
+            </div>
+
+            {/* European AQI */}
+            <div className="p-4 rounded-2xl bg-white border border-[#c5e6db]">
+              <div className="text-[11px] font-bold text-[#479b89] uppercase">European EAQI</div>
+              <div className="flex items-baseline gap-2 mt-1">
+                <span className="text-2xl font-black text-[#092c24] font-mono">
+                  {airQuality.current.europeanAqi !== null ? Math.round(airQuality.current.europeanAqi) : 'N/A'}
+                </span>
+                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase border ${airQuality.assessment.europeanCategory.bg} ${airQuality.assessment.europeanCategory.text} ${airQuality.assessment.europeanCategory.border}`}>
+                  {airQuality.assessment.europeanCategory.label}
+                </span>
+              </div>
+              <div className="text-[11px] text-slate-500 mt-1 line-clamp-1">{airQuality.assessment.europeanCategory.description}</div>
+            </div>
+
+            {/* Leading Pollutant */}
+            <div className="p-4 rounded-2xl bg-white border border-[#c5e6db]">
+              <div className="text-[11px] font-bold text-[#479b89] uppercase">Leading Concern</div>
+              <div className="flex items-baseline gap-2 mt-1">
+                <span className="text-base font-black text-[#092c24]">
+                  {airQuality.assessment.dominantPollutant.chemical || airQuality.assessment.dominantPollutant.name}
+                </span>
+                <span className="text-xs font-mono font-bold text-slate-600">
+                  {airQuality.assessment.dominantPollutant.value !== null ? `${airQuality.assessment.dominantPollutant.value} ${airQuality.assessment.dominantPollutant.unit}` : ''}
+                </span>
+              </div>
+              <div className="text-[11px] text-slate-500 mt-1 line-clamp-1">
+                Trend: <span className="font-semibold capitalize text-[#092c24]">{airQuality.assessment.dominantPollutant.trend}</span>
+              </div>
+            </div>
+
+            {/* Health Precaution Summary */}
+            <div className="p-4 rounded-2xl bg-white border border-[#c5e6db] flex flex-col justify-between">
+              <div>
+                <div className="text-[11px] font-bold text-[#479b89] uppercase">Guidance Summary</div>
+                <p className="text-xs text-slate-700 mt-1 line-clamp-2">
+                  {airQuality.assessment.healthGuidance.general}
+                </p>
+              </div>
+              <div className="text-[10px] text-slate-400 mt-2 font-mono">
+                Updated: {new Date(airQuality.metadata.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 5-Stage Early Signals Widget */}
       <EarlySignalsWidget

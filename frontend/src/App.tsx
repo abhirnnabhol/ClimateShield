@@ -7,6 +7,7 @@ import { ExplorePage } from './pages/ExplorePage';
 import { AlertsPage } from './pages/AlertsPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { AirQualityPage } from './pages/AirQualityPage';
 import { AuthModal } from './pages/AuthModal';
 import { LocationModal } from './components/LocationModal';
 import { MethodologyModal } from './components/MethodologyModal';
@@ -32,7 +33,7 @@ const AppContent: React.FC = () => {
       }
       fetchAlertsCount();
     } else {
-      if (currentTab === 'dashboard' || currentTab === 'alerts' || currentTab === 'profile' || currentTab === 'history') {
+      if (currentTab === 'dashboard' || currentTab === 'alerts' || currentTab === 'profile' || currentTab === 'history' || currentTab === 'air-quality') {
         setCurrentTab('login');
       }
     }
@@ -92,10 +93,15 @@ const AppContent: React.FC = () => {
           <DashboardPage
             onOpenLocationModal={() => setLocationModalOpen(true)}
             onNavigateToAlerts={() => setCurrentTab('alerts')}
+            onNavigateToAirQuality={() => setCurrentTab('air-quality')}
           />
         )}
 
         {currentTab === 'explore' && <ExplorePage />}
+
+        {currentTab === 'air-quality' && (
+          <AirQualityPage onOpenLocationModal={() => setLocationModalOpen(true)} />
+        )}
 
         {currentTab === 'alerts' && (
           <AlertsPage onAlertsCountChange={(cnt) => setUnreadAlertsCount(cnt)} />

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, MapPin, Bell, BarChart2, User as UserIcon, LogOut, Menu, X, Compass, Radio, Leaf, Layers } from 'lucide-react';
+import { Shield, MapPin, Bell, BarChart2, User as UserIcon, LogOut, Menu, X, Compass, Radio, Leaf, Layers, Wind } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 interface NavbarProps {
@@ -27,6 +27,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       ? [
           { id: 'dashboard', label: 'Dashboard', icon: Shield },
           { id: 'explore', label: 'Explore', icon: Compass },
+          { id: 'air-quality', label: 'Air Quality', icon: Wind },
           { id: 'alerts', label: 'Alerts', icon: Bell, badge: unreadAlertsCount },
           { id: 'history', label: 'History', icon: BarChart2 }
         ]

@@ -9,7 +9,8 @@ import {
   RiskHistoryPoint,
   LocationSearchResult,
   ScenarioSimulationRequest,
-  ScenarioSimulationResult
+  ScenarioSimulationResult,
+  AirQualityData
 } from '../types';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -241,6 +242,16 @@ class ApiClient {
   // Monitoring manual trigger
   async runMonitoringCycle(): Promise<{ message: string; report: any }> {
     return this.request('/monitor/run', { method: 'POST' });
+  }
+
+  // Air Quality Intelligence
+  async getAirQuality(latitude?: number, longitude?: number): Promise<{ success: boolean; airQuality: AirQualityData }> {
+    const query = (latitude !== undefined && longitude !== undefined)
+      ? `?lat=${latitude}&lon=${longitude}`
+      : '';
+    return this.request<{ success: boolean; airQuality: AirQualityData }>(
+      `/air-quality${query}`
+    );
   }
 }
 
